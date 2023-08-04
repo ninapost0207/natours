@@ -6,10 +6,11 @@ const router = express.Router();
 
 router.param('id', tourController.checkID); // param middleware
 
+
 router
     .route('/') // actually, is a middleware function that only applies to a certain URL
     .get(tourController.getAllTours)
-    .post(tourController.createTour)
+    .post(tourController.checkBody, tourController.createTour)
 
 router
     .route('/:id')
