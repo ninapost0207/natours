@@ -1,74 +1,83 @@
 const fs = require('fs');
+const User = require('../models/userModel');
 
-const usersData = JSON.parse(fs.readFileSync(`${__dirname}/../dev-data/data/users.json`));
-
-
-exports.checkID = (req, res, next, val) => {         
-    const user = usersData.find(el => el._id === req.params.id)
-    if (!user) {
-        return res.status(404).json({
-            status: "fail",
-            message: "Invalid ID"
-        })
-    } 
-    next();
-};
-
-exports.getAllUsers = (request, response) => { 
-    response.status(200).json({
-        status: 'success',
-        results: usersData.length,         
-        data: {
-            users: usersData
-        }
-    })
-};
-exports.getUser = (request, response) => { 
-    const user = usersData.find(el => el._id === request.params.id)
-    
-    response.status(200).json({
-        status: 'success',
-        data: { user }
-    })
-};
-exports.createUser = (request, response) => { 
-    const newId = usersData[usersData.length - 1]._id + '1';
-    const newUser = Object.assign({_id: newId}, request.body) // allows us to create new object by merging two existing objects together
-    
-    usersData.push(newUser);
-    fs.writeFile(`${__dirname}/dev-data/data/users.json`, JSON.stringify(usersData), err => {
-        response.status(201).json({ //this status means 'created'
+exports.getAllUsers = async (request, response) => { 
+    try {
+        const users = await User.find() 
+        response.status(200).json({
             status: 'success',
+            results: users.length,
             data: {
-                user: newUser
+                users
             }
+        })
+    } catch (err) {
+        response.status(404).json({
+            status: 'fail',
+            message: err
+        })
+    }
+};
+exports.getUser = async (request, response) => {
+    try {
+        const user = await User.findById(request.params.id)  
+        response.status(200).json({
+            status: 'success',
+            data: { user }
+        })
+    } catch (err) {
+        response.status(404).json({
+            status: 'fail',
+            message: err
+        })
+    }        
+};
+exports.createUser = async (request, response) => { 
+    try {        
+        const user = await User.create(request.body)
+        
+        response.status(201).json({ 
+            status: 'success',
+            data: { user }
         }) 
-    })    
+    } catch (err) {
+        response.status(400).json({
+            status: 'fail',
+            message: err
+        })
+    }    
 };
 
-exports.updateUser = (request, response) => { 
-    const user = usersData.find(el => el._id === request.params.id)
+exports.updateUser = async (request, response) => { 
+    try {
+        const user = await User.findByIdAndUpdate(request.params.id, request.body, { 
+            new: true, 
+            runValidators: true 
+        }) 
         
-    const newUser = Object.assign(user, request.body)
-    
-    fs.writeFile(`${__dirname}/dev-data/data/users.json`, JSON.stringify(usersData), err => {
         response.status(200).json({ 
             status: 'success',
-            data: {
-                user: newUser
-            }
-        }) 
-    })
+            data: { user }
+        })         
+    } catch (err) {
+        response.status(400).json({
+            status: 'fail',
+            message: err
+        })
+    }        
 };
-exports.deleteUser = (request, response) => { 
-    const index = usersData.findIndex(el => el._id === request.params.id)
+exports.deleteUser = async (request, response) => { 
+    try {
+        await User.findByIdAndDelete(request.params.id) 
         
-    usersData.splice(index, 1);    
-    
-    fs.writeFile(`${__dirname}/dev-data/data/users.json`, JSON.stringify(usersData), err => {
         response.status(204).json({ 
             status: 'success',
             data: null
-        }) 
-    })
+        })         
+    } catch (err) {
+        response.status(400).json({
+            status: 'fail',
+            message: err
+        })
+    }    
 };

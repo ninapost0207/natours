@@ -6,13 +6,15 @@ const userRouter = require('./routes/userRoutes');
 const app = express();
 
 // 1) MIDDLEWARES
-app.use(morgan('dev')); // logs the main information about each request (method, url, status, etc) # GET /api/v1/tours 200 2.740 ms - 7423
+if(process.env.NODE_ENV === 'development') { // logging only for development
+    app.use(morgan('dev')); // logs the main information about each request (method, url, status, etc) # GET /api/v1/tours 200 2.740 ms - 7423
+}
 app.use(express.json()); // use Middleware - the function that can modify the incoming request data. Is called middleware, because stands between request and response
 app.use((req, res, next) => { //define a Middleware function with 3 arguments. Next - name of 3rd argument according to Convention. Applies to each request
     req.requestTime = new Date().toISOString(); //aplies to every request, set time of the request
     next(); // never forget to use next in all middleware, otherwise request and response cycle will stuck and we would never send back a response
 })
-
+app.use(express.static(`${__dirname}/public`)) //serves static files (html, css...) from the folder and not from a route 
 
 // 2) ROUTE HANDLERS - we put them in separate folders (routes)
 // GET method route
