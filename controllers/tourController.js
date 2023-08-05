@@ -1,86 +1,96 @@
 const fs = require('fs');
+const Tour = require('../models/tourModel');
 
-const toursData = JSON.parse(fs.readFileSync(`${__dirname}/../dev-data/data/tours-simple.json`)) // __dirname is the folder where the current script is located
 
-exports.checkID = (req, res, next, val) => {         
-    if (Number(req.params.id) >= toursData.length) {
-        return res.status(404).json({
-            status: "fail",
-            message: "Invalid ID"
+exports.getAllTours = async (request, response) => { //v1 - should always specify the version of API
+    try {
+        const tours = await Tour.find() //find all documents that match a query
+        //It takes 3 arguments and they are: query, query projection (which fields to include or exclude from the query), and the general query options (like limit, skip, etc).
+        //may call it without any arguments and it will return all the documents in that model. 
+        response.status(200).json({
+            status: 'success',
+            results: tours.length,
+            data: {
+                tours
+            }
         })
-    };    
-    next();
-};
-
-// create a checkBody middleware to check if the body contains the "name" and the "price" properties. If not, send back 400 (bad request). Add to the post handler stack
-
-exports.checkBody = (req, res, next) => {
-    if (!req.body.name || !req.body.price) {
-        return res.status(400).json({
-            status: "fail",
-            message: "Missing name or price"
+    } catch (err) {
+        response.status(404).json({
+            status: 'fail',
+            message: err
         })
-    };    
-    next();
+    }
 };
 
-
-exports.getAllTours = (request, response) => { //v1 - should always specify the version of API
-    response.status(200).json({
-        status: 'success',
-        results: toursData.length,
-        requestedAt: request.requestTime, // just check the work of middleware
-        data: {
-            tours: toursData
-        }
-    })
+exports.getTour = async (request, response) => {
+    try {
+        const tour = await Tour.findById(request.params.id) //function is used to find a single document by its _id field. 
+        // Tour.findOne({ _id: request.params.id }) - the same. 
+        response.status(200).json({
+            status: 'success',
+            data: { tour }
+        })
+    } catch (err) {
+        response.status(404).json({
+            status: 'fail',
+            message: err
+        })
+    }        
 };
 
-exports.getTour = (request, response) => {
-    const tour = toursData.find(el => el.id === Number(request.params.id))     
-    response.status(200).json({
-        status: 'success',
-        data: { tour }
-    })
-};
-
-exports.createTour = (request, response) => { // URL is the same as in GET request
-    const newId = toursData[toursData.length - 1].id + 1;
-    const newTour = Object.assign({id: newId}, request.body) // allows us to create new object by merging two existing objects together
-    
-    toursData.push(newTour);
-    fs.writeFile(`${__dirname}/dev-data/data/tours-simple.json`, JSON.stringify(toursData), err => {
+exports.createTour = async (request, response) => { // URL is the same as in GET request
+    try {
+        //const newTour = new Tour({});
+        //newTour.save()
+        const newTour = await Tour.create(request.body)
+        
         response.status(201).json({ //this status means 'created'
             status: 'success',
             data: {
                 tour: newTour
             }
         }) 
-    })    
+    } catch (err) {
+        response.status(400).json({
+            status: 'fail',
+            message: err
+        })
+    }    
 };
 
-exports.updateTour = (request, response) => { 
-    const tour = toursData.find(el => el.id === Number(request.params.id))
-    const newTour = Object.assign(tour, request.body)
-    
-    fs.writeFile(`${__dirname}/dev-data/data/tours-simple.json`, JSON.stringify(toursData), err => {
+exports.updateTour = async (request, response) => { 
+    try {
+        const tour = await Tour.findByIdAndUpdate(request.params.id, request.body, { //PATCH method
+            new: true, //returns new updated document to the client
+            runValidators: true //checks the types of values
+        }) 
+        
         response.status(200).json({ 
             status: 'success',
             data: {
-                tour: newTour
+                tour
             }
-        }) 
-    })
+        })         
+    } catch (err) {
+        response.status(400).json({
+            status: 'fail',
+            message: err
+        })
+    }        
 };
 
-exports.deleteTour = (request, response) => { 
-    const index = toursData.findIndex(el => el.id === Number(request.params.id))    
-    toursData.splice(index, 1);    
-    
-    fs.writeFile(`${__dirname}/dev-data/data/tours-simple.json`, JSON.stringify(toursData), err => {
-        response.status(204).json({ // means "no content"
+exports.deleteTour = async (request, response) => { 
+    try {
+        await Tour.findByIdAndDelete(request.params.id) 
+        
+        response.status(204).json({ 
             status: 'success',
             data: null
-        }) 
-    })
+        })         
+    } catch (err) {
+        response.status(400).json({
+            status: 'fail',
+            message: err
+        })
+    }    
 };
