@@ -27,7 +27,8 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: [true, "A user must have a password"], 
         unique: true,
-        trim: true
+        trim: true,
+        select: false
     }    
 });
 const User = mongoose.model('User', userSchema); 

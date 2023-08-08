@@ -1,4 +1,3 @@
-const fs = require('fs');
 const User = require('../models/userModel');
 
 exports.getAllUsers = async (request, response) => { 
