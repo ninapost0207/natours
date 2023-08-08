@@ -2,9 +2,8 @@ const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 dotenv.config({ path: './config.env' }); // this command read all variables from the file and save them into Nodejs environment variables (process.env)
 const app = require('./app');
-//cannot read process variables inside app.js, because it was not yet configured
 
-const DB = process.env.DATABASE.replace('<PASSWORD>', process.env.DATABASE_PASSWORD)
+const DB = process.env.DATABASE.replace('<PASSWORD>', process.env.DB_PASSWORD).replace('<USER>', process.env.DB_USER)
 
 
 dbConnect().catch(err => console.log(err));
@@ -12,8 +11,6 @@ dbConnect().catch(err => console.log(err));
 async function dbConnect() {
   await mongoose.connect(DB).then(() => console.log('Success'));
 }
-
-
 
 
 const port = process.env.PORT || 3000;
