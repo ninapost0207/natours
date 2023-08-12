@@ -61,12 +61,12 @@ const tourSchema = new mongoose.Schema({
     },  
     summary: {
         type: String, 
-        trim: true
+        trim: true,
+        required: [true, "A tour must have a description"]
     },
     description: {
         type: String, 
-        trim: true,
-        required: [true, "A tour must have a description"]
+        trim: true
     },
     imageCover: {
         type: String, 
@@ -76,7 +76,7 @@ const tourSchema = new mongoose.Schema({
     createdAt: {
         type: Date,
         default: Date.now(),
-        select: false
+        select: false // will not be shown to the client
     },
     startDates: [Date],
     secretTour: {
@@ -124,16 +124,11 @@ tourSchema.pre('aggregate', function(next) {
 })
 
 
-const Tour = mongoose.model('Tour', tourSchema); // Always use uppercase for models' names and variables
-
+const Tour = mongoose.model('Tour', tourSchema); 
 
 module.exports = Tour;
 // Example:
-/*const testTour = new Tour({
-    name: "The Forest Hiker",
-    rating: 4.7,
-    price: 497
-});
+/*
 testTour.save().then(doc => {
     console.log(doc);
 }).catch(err => console.log(err));*/
