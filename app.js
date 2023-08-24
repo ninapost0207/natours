@@ -1,5 +1,11 @@
 const express = require('express');
 const morgan = require('morgan');
+const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
+const mongoSanitize = require('express-mongo-sanitize');
+const xss = require('xss-clean');
+const hpp = require('hpp');
+
 const globalErrorHandler = require('./controllers/errorController');
 const tourRouter = require('./routes/tourRoutes');
 const userRouter = require('./routes/userRoutes');
@@ -7,16 +13,45 @@ const AppError = require('./utils/appError');
 
 const app = express();
 
-// MIDDLEWARES
+// GLOBAL MIDDLEWARES
+// Set security HTTP headers
+app.use(helmet());
+
+// Development logging
 if(process.env.NODE_ENV === 'development') { // logging only for development
     app.use(morgan('dev')); // logs the main information about each request (method, url, status, etc) # GET /api/v1/tours 200 2.740 ms - 7423
 }
-app.use(express.json()); // use Middleware - the function that can modify the incoming request data. Is stands between request and response
-app.use((req, res, next) => { //define a Middleware function with 3 arguments. Next - name of 3rd argument according to Convention. Applies to each request
+
+// Limit requests from same API
+const limiter = rateLimit({ // Limits 100 requests from the same IP in 1 hour
+    max: 100,
+    windowMs: 60 * 60 * 1000,
+    message: "Too many requests from this IP, please try again in 1 hour."
+});
+app.use('/api', limiter); // apply limiter only to routes starting with this url. In headers will see X-RateLimit-Remaining
+
+// Body parser, reading data from body into req.body
+app.use(express.json({ limit: '10kb'})); 
+
+// Data sanitization against NoSQL query injection
+app.use(mongoSanitize()); // filters out all $ and dots from request.params
+
+// Data sanitization against XSS - cross-site scripting attacks
+app.use(xss()); // protect from malicious HTML code, converts it into HTML entity "<" => "&lt;" 
+
+// Prevent parameter pollution
+app.use(hpp({
+    whitelist: ['duration', "ratingsAverage", "ratingsQuantity", "maxGroupSize", "difficulty", "price"]
+}));
+
+// Test middleware
+app.use((req, res, next) => { //Next - name of 3rd argument according to Convention. Applies to each request
     req.requestTime = new Date().toISOString(); //aplies to every request, set time of the request
-    next(); // never forget to use next in all middleware, otherwise request and response cycle will stuck and we would never send back a response
-})
-app.use(express.static(`${__dirname}/public`)) //serves static files (html, css...) from the folder and not from a route 
+    next(); 
+});
+
+// Serving static files (html, css...) from the folder and not from a route
+app.use(express.static(`${__dirname}/public`))  
 
 
 // mounting the new routers on the routes

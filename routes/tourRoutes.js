@@ -1,6 +1,6 @@
 const express = require('express');
 const tourController = require('../controllers/tourController');
-
+const authController = require('../controllers/authController');
 
 const router = express.Router();
 
@@ -14,13 +14,13 @@ router.route('/monthly-plan/:year').get(tourController.getMonthlyPlan)
     
 router
     .route('/') // actually, is a middleware function that only applies to a certain URL
-    .get(tourController.getAllTours)
+    .get(authController.protect, tourController.getAllTours)
     .post(tourController.createTour)
 
 router
     .route('/:id')
     .get(tourController.getTour)
-    .patch(tourController.updateTour)
-    .delete(tourController.deleteTour)
+    .patch(authController.protect, authController.restrictTo('admin', 'lead-guide'), tourController.updateTour)
+    .delete(authController.protect, authController.restrictTo('admin', 'lead-guide'), tourController.deleteTour)
 
 module.exports = router

@@ -4,8 +4,7 @@ const AppError = require('../utils/appError');
 const catchAsync = require('../utils/catchAsync');
 
 
-exports.aliasTopTours = (request, response, next) => { //creating a middleware to specify the route
-    
+exports.aliasTopTours = (request, response, next) => { //creating a middleware to specify the route    
     request.query.limit = '5';
     request.query.sort = '-ratingsAverage,price';
     request.query.fields = 'name,price,ratingsAverage,duration,summary';

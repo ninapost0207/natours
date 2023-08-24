@@ -6,6 +6,7 @@ class AppError extends Error {
         this.status = `${statusCode}`.startsWith('4') ? "fail" : "error";
         this.isOperational = true;
 
+        // used when constructing Error object without extending the Error class. When extending the Error class, capturing the stack trace is already done by the Error constructor
         Error.captureStackTrace(this, this.constructor)
     }
 };

@@ -1,12 +1,13 @@
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
-dotenv.config({ path: './config.env' }); // this command read all variables from the file and save them into Nodejs environment variables (process.env)
 
-process.on('uncaughtException', err => {
+process.on('uncaughtException', err => { // all bugs that occur in synchronous code, but are not handled anywhere
   console.log("uncaughtException!!!!");
   console.log(err.name, err.message);
   process.exit(1); 
 });
+
+dotenv.config({ path: './config.env' }); // this command read all variables from the file and save them into Nodejs environment variables (process.env)
 
 const app = require('./app');
 
@@ -26,10 +27,10 @@ const server = app.listen(port, () => { //This method is identical to Node’s h
 })
 
 
-process.on('unhandledRejection', err => {
+process.on('unhandledRejection', err => { // handles errors of connection with database that occur out of the express 
   console.log(err.name, err.message);
-  server.close(() => {
-    process.exit(1);
+  server.close(() => { // give time to server to finish all requests that are still pending
+    process.exit(1); // code 1 - unhandled fatal exceptions occur (code 0 - terminate when no more sync operations are happening).
   })
 });
 
