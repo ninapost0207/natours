@@ -73,6 +73,7 @@ userSchema.pre(/^find/, async function(next) {
     next();
 })
 
+
 // Instance method available in all user documents
 userSchema.methods.correctPassword = async function(candidatePassword, userPassword) {
     return await bcrypt.compare(candidatePassword, userPassword) // userPassword is hashed, candidatePassword is not. We cannot compare them manually, because in the userModes password.select = false

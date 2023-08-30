@@ -9,6 +9,7 @@ const hpp = require('hpp');
 const globalErrorHandler = require('./controllers/errorController');
 const tourRouter = require('./routes/tourRoutes');
 const userRouter = require('./routes/userRoutes');
+const reviewRouter = require('./routes/reviewRoutes');
 const AppError = require('./utils/appError');
 
 const app = express();
@@ -57,6 +58,7 @@ app.use(express.static(`${__dirname}/public`))
 // mounting the new routers on the routes
 app.use('/api/v1/tours', tourRouter); // After this, in tourRouter.route we change ('/api/v1/tours') to ('/'), and ('/api/v1/tours:id') to ('/:id')
 app.use('/api/v1/users', userRouter);
+app.use('/api/v1/reviews', reviewRouter);
 
 // Handling unhandled routes - should run after all route handlers
 app.all('*', (req, res, next) => { // "all" - will work for all http methods. "*" - stands for everything, for all urls that were not handled before. 
