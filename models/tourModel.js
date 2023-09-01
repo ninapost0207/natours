@@ -41,7 +41,8 @@ const tourSchema = new mongoose.Schema({
         type: Number,
         default: 4.5,
         min: [1.0, "Rating must be above 1.0"],
-        max: [5.0, "Rating must be below 5.0"]
+        max: [5.0, "Rating must be below 5.0"],
+        set: val => Math.round(val * 10) / 10
     },
     ratingsQuantity: {
         type: Number,
@@ -118,6 +119,13 @@ const tourSchema = new mongoose.Schema({
     toObject: { virtuals: true }
 });
 
+tourSchema.index({
+    price: 1, // ascending order 
+    ratingsAverage: -1 //descending order
+});
+tourSchema.index({ slug: 1 });
+tourSchema.index({ 'startLocation.coordinates': '2dsphere' });
+
 //  VIRTUAL PROPERTIES
 tourSchema.virtual('durationWeeks').get( function () { // virtual property will be created each time we get data from db. We cannot use it in a query!!!
     return this.duration / 7;
@@ -127,7 +135,7 @@ tourSchema.virtual('durationWeeks').get( function () { // virtual property will 
 tourSchema.virtual('reviews', {
     ref: "Review",
     foreignField: "tour", // reference to the other model where the reference to current model is stored. ReviewModel has a filed called 'tour'
-    localField: "_id"
+    localField: "_id" // reference to the field where the connection data is stored
 })
 
 // DOCUMENT MIDDLEWARE: runs before .save() and .create()
@@ -137,15 +145,12 @@ tourSchema.pre('save', function (next) {
     next();
 });
 
-/*tourSchema.post('save', function (doc, next) { // 1st argument - document that was just saved in db
-    console.log(doc); //we don't have 'this' key word
-    next();
-})*/
+
 /*
 // Embedding
 tourSchema.pre('save', async function() {
     const guidesPromises = this.guides.map(id => User.findById(id).exec());
-    this.guides = await Promise.all(guidesPromises);
+    this.guides = await Promise.all(guidesPromises); // Overwrites the array of Ids with array of user documents
   });
 */
 // QUERY MIDDLEWARE
@@ -165,19 +170,15 @@ tourSchema.pre(/^find/, function(next) { // all strings that start from 'find': 
 
 // AGGREGATION MIDDLEWARE
 //'this' is an Aggregate object, and 'res' is the result of the aggregation call. 'res' is always an array.
-tourSchema.pre('aggregate', function(next) {
+/*tourSchema.pre('aggregate', function(next) {
     this.pipeline().unshift({ //adds new stage at the beginning of the array of stages in ALL aggregation pipelines
         $match: { secretTour: { $ne: true } }
     })
     next();
-})
+})*/
 
 
 const Tour = mongoose.model('Tour', tourSchema); 
 
 module.exports = Tour;
-// Example:
-/*
-testTour.save().then(doc => {
-    console.log(doc);
-}).catch(err => console.log(err));*/
+

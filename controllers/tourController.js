@@ -1,87 +1,23 @@
 const Tour = require('../models/tourModel');
-const APIFeatures = require('../utils/apiFeatures');
 const AppError = require('../utils/appError');
 const catchAsync = require('../utils/catchAsync');
+const factory = require('./handlerFactory');
 
 
-exports.aliasTopTours = (request, response, next) => { //creating a middleware to specify the route    
+exports.aliasTopTours = (request, response, next) => {     
     request.query.limit = '5';
     request.query.sort = '-ratingsAverage,price';
     request.query.fields = 'name,price,ratingsAverage,duration,summary';
     next();
 };
 
+exports.getAllTours = factory.getAll(Tour);
+exports.getTour = factory.getOne(Tour, { path: 'reviews' });
+exports.createTour = factory.createOne(Tour);
+exports.updateTour = factory.updateOne(Tour);
+exports.deleteTour = factory.deleteOne(Tour);
 
-
-exports.getAllTours = catchAsync(async (request, response, next) => { 
-    // Tour.find() will return a query object, so we can chain it with other functions. That is why we don't await the result of find()
-    const features = new APIFeatures(Tour.find(), request.query).filter().sort().limitFields().paginate();
-    //only after all chaining methods we await for the result of all these queries. We cannot write const "tours = await new APIFeatures..."
-    const tours = await features.query; // execute query
-
-    response.status(200).json({
-        status: 'success',
-        results: tours.length,
-        data: {
-            tours
-        }
-    })    
-});
-
-exports.getTour = catchAsync(async (request, response, next) => {
-    const tour = await Tour.findById(request.params.id).populate('reviews')
-    // Tour.findOne({ _id: request.params.id }) - the same. 
-
-    if(!tour) {
-        return next(new AppError("No tour found with this ID", 404))
-    }
-    response.status(200).json({
-        status: 'success',
-        data: { tour }
-    }) 
-});
-
-exports.createTour = catchAsync(async (request, response, next) => { 
-    //const newTour = new Tour({request.body});
-    //newTour.save()
-    const newTour = await Tour.create(request.body)
-    
-    response.status(201).json({ 
-        status: 'success',
-        data: {
-            tour: newTour
-        }
-    })  
-});
-
-exports.updateTour = catchAsync(async (request, response, next) => { 
-    const tour = await Tour.findByIdAndUpdate(request.params.id, request.body, { //PATCH method
-        new: true, //returns new updated document to the client
-        runValidators: true 
-    }) 
-    if(!tour) {
-        return next(new AppError("No tour found with this ID", 404))
-    }
-    response.status(200).json({ 
-        status: 'success',
-        data: {
-            tour
-        }
-    })             
-});
-
-exports.deleteTour = catchAsync(async (request, response, next) => { 
-    const tour = await Tour.findByIdAndDelete(request.params.id) 
-    if(!tour) {
-        return next(new AppError("No tour found with this ID", 404))
-    }
-    response.status(204).json({ 
-        status: 'success',
-        data: null
-    })          
-});
-
-// Aggregation operations allow you to group, sort, perform calculations, analyze data, and much more.
+// Aggregation operations allow to group, sort, perform calculations, analyze data, and much more.
 // Can have one or more "stages". The order of these stages are important. Each stage acts upon the results of the previous stage.
 
 exports.getTourStats = catchAsync(async (req, res, next) => {
@@ -147,4 +83,54 @@ exports.getMonthlyPlan = catchAsync(async (req, res, next) => {
             plan
         }
     })  
+});
+// Geospatial query
+exports.getToursWithin = catchAsync(async (req, res, next) => {
+    const { distance, unit, latlng } = req.params;
+    const [lat, lng] = latlng.split(',');
+    if(!lat || !lng) {
+        next(new AppError('Plese provide latitude and longitude in the format lat,lng.', 400))
+    }
+    // To get the radians, we need to divide distance to Earth radius, whether it is in miles or kilometers
+    const radius = unit === 'mi' ? distance / 3963.2 : distance / 6378.1; 
+    const tours = await Tour.find({ startLocation: { $geoWithin: { $centerSphere: [[lng, lat], radius] } } });
+    res.status(200).json({ 
+        status: 'success',
+        results: tours.length,
+        data: {
+            data: tours
+        }
+    })
+});
+exports.getDistances = catchAsync(async (req, res, next) => {
+    const { unit, latlng } = req.params;
+    const [lat, lng] = latlng.split(',');
+    const multiplier = unit === 'mi' ? 0.000621371 : 0.001;
+    if(!lat || !lng) {
+        next(new AppError('Plese provide latitude and longitude in the format lat,lng.', 400))
+    }
+    
+    const distances = await Tour.aggregate([
+        {
+            $geoNear: {
+                near: {
+                    type: "Point",
+                    coordinates: [Number(lng), Number(lat)]
+                },
+                distanceField: 'distance',
+                distanceMultiplier: multiplier
+            }
+        }, {
+            $project: {
+                distance: 1,
+                name: 1
+            }
+        }
+    ])
+    res.status(200).json({ 
+        status: 'success',
+        data: {
+            data: distances
+        }
+    })
 });
