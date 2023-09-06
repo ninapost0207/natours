@@ -22,34 +22,55 @@ const handleValidationErrorDB = (err) => {
 const handleJWTError = () => new AppError('Invalid token. Please log in again', 401);
 const handleExpiredError = () => new AppError('Your token has expired. Please log in again', 401);
 
-const sendErrorDev = (err, res) => {
-    res.status(err.statusCode).json({
-        status: err.status,
-        message: err.message,
-        error: err,
-        stack: err.stack
+const sendErrorDev = (err, req, res) => {
+    // API
+    if(req.originalUrl.startsWith('/api')) {
+        return res.status(err.statusCode).json({
+            status: err.status,
+            message: err.message,
+            error: err,
+            stack: err.stack
+        })
+    } 
+    // Rendered webpage
+    console.error("Error", err)
+    return res.status(err.statusCode).render('error', {
+        title: "Something went wrong",
+        msg: err.message
     })
+
 };
 
-const sendErrorProd = (err,res) => {
-    // Operational, trusted error: send message to the client
-    if(err.isOperational) {
-        res.status(err.statusCode).json({
-            status: err.status,
-            message: err.message
-        })
-
-    // Programming or other unknown error: don't leak error details to the client
-    } else {
+const sendErrorProd = (err, req, res) => {    
+    // API
+    if(req.originalUrl.startsWith('/api')) {
+        // Operational, trusted error: send message to the client
+        if(err.isOperational) {
+            return res.status(err.statusCode).json({
+                status: err.status,
+                message: err.message
+            })
+        } 
         // 1) Log error
         console.error("Error", err)
         
         // 2) Send generic message
-        res.status(500).json({
+        return res.status(500).json({
             status: "error",
             message: "Something went wrong"
-        })
-    }
+        })       
+    } 
+    // Rendered webpage
+    if(err.isOperational) {
+        return res.status(err.statusCode).render('error', {
+            title: "Something went wrong",
+            msg: err.message
+        })    
+    } 
+    return res.status(err.statusCode).render('error', {
+        title: "Something went wrong",
+        msg: "Please try again later"
+    })     
 };
 
 module.exports = (err, req, res, next) => { // if pass 4 arguments in app.use, express will automatically recognise it as an Error handling middleware
@@ -57,17 +78,18 @@ module.exports = (err, req, res, next) => { // if pass 4 arguments in app.use, e
     err.status = err.status || "error";
 
     if(process.env.NODE_ENV === "development") {
-        sendErrorDev (err, res)
+        sendErrorDev (err, req, res)
     } else if(process.env.NODE_ENV === "production") {
         // errors below will be passed in these 3 functions, that will return new Errors, which will be marked as operational(because created from AppError class) and then passed in sendErrorProd
         let error = {...err};
+        error.message = err.message;
         if(err.name === "CastError")  error = handleCastErrorDB(error);        
         if(err.code === 11000) error = handleDuplicateFieldsDB(error);
         if(err.name === "ValidationError")  error = handleValidationErrorDB(error);
         if(err.name === "JsonWebTokenError")  error = handleJWTError();
         if(err.name === "TokenExpiredError")  error = handleExpiredError();
 
-        sendErrorProd(error, res)
+        sendErrorProd(error, req, res)
     }
 
 }

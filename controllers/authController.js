@@ -57,11 +57,23 @@ exports.login = catchAsync(async(req, res, next) => {
     createSendToken(user, 200, res)
 });
 
+  
+exports.logout = (req, res) => {
+    /*res.cookie('jwt', 'loggedout', {
+        expires: new Date(Date.now() + 10000),
+        httpOnly: true
+    })*/
+    res.clearCookie('jwt')
+    res.status(200).json({ status: 'success'})
+};
+
 exports.protect = catchAsync(async(req, res, next) => {
     let token;
     // 1) Getting token and check if it is there
     if(req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
         token = req.headers.authorization.split(' ')[1];
+    } else if(req.cookies.jwt) {
+        token = req.cookies.jwt;
     }
     if(!token) {
         return next( new AppError('You are not logged in. Please log in to get access', 401));
@@ -84,6 +96,7 @@ exports.protect = catchAsync(async(req, res, next) => {
     };
 
     // Grant access to protected route
+    res.locals.user = currentUser; 
     req.user = currentUser; // pass data to the next middleware
     next();
 });
@@ -167,4 +180,31 @@ exports.updatePassword = catchAsync(async(req, res, next) => {
 
     // 4) Log user in, send JWT
     createSendToken(user, 200, res)
-})
+});
+
+// Only for rendered pages, not errors!
+exports.isLoggedIn = async(req, res, next) => {
+    if(req.cookies.jwt) {
+        try {
+            // 1) verify token
+            const decodedPayload = await util.promisify(jwt.verify)(req.cookies.jwt, process.env.JWT_SECRET) //pass payload and the secret to create a test signature
+            
+            // 2) Check if user still exists
+            const currentUser = await User.findById(decodedPayload.id)
+            if(!currentUser) {
+                return next();
+            }
+            
+            // 3) Check if user changed password after JWT was issued
+            if(await currentUser.changedPasswordAfter(decodedPayload.iat)) {
+               return next();
+            };
+            // There is a logged in user
+            res.locals.user = currentUser; 
+            return next();        
+        } catch(err) {
+            return next();
+        }
+    }
+    next();
+};

@@ -1,3 +1,4 @@
+const path = require('path');
 const express = require('express');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
@@ -5,67 +6,139 @@ const helmet = require('helmet');
 const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
 const hpp = require('hpp');
+const cookieParser = require('cookie-parser');
 
+const AppError = require('./utils/appError');
 const globalErrorHandler = require('./controllers/errorController');
 const tourRouter = require('./routes/tourRoutes');
 const userRouter = require('./routes/userRoutes');
 const reviewRouter = require('./routes/reviewRoutes');
-const AppError = require('./utils/appError');
+const viewRouter = require('./routes/viewRoutes');
 
 const app = express();
 
-// GLOBAL MIDDLEWARES
+app.set('view engine', 'pug');
+app.set('views', path.join(__dirname, 'views'));
+
+// 1) GLOBAL MIDDLEWARES
+// Serving static files
+app.use(express.static(path.join(__dirname, 'public')));
+
 // Set security HTTP headers
-app.use(helmet());
+const scriptSrcUrls = ['https://unpkg.com/', 'https://tile.openstreetmap.org'];
+const styleSrcUrls = [
+  'https://unpkg.com/',
+  'https://tile.openstreetmap.org',
+  'https://fonts.googleapis.com/'
+];
+const connectSrcUrls = ['https://unpkg.com', 'https://tile.openstreetmap.org'];
+const fontSrcUrls = ['fonts.googleapis.com', 'fonts.gstatic.com'];
+app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'", 'data:', 'blob:', 'https:', 'ws:'],
+          baseUri: ["'self'"],
+          fontSrc: ["'self'", 'https:', 'data:', ...fontSrcUrls], 
+          scriptSrc: [ 
+            "'self'",
+            'https:',
+            'http:',
+            'blob:',
+            'https://*.mapbox.com',
+            'https://js.stripe.com',
+            'https://m.stripe.network',
+            'https://*.cloudflare.com',
+            ...scriptSrcUrls
+          ],
+          frameSrc: ["'self'", 'https://js.stripe.com'],
+          objectSrc: ["'none'"],
+          styleSrc: ["'self'", 'https:', "'unsafe-inline'", ...styleSrcUrls], 
+          workerSrc: [
+            "'self'",
+            'data:',
+            'blob:',
+            'https://*.tiles.mapbox.com',
+            'https://api.mapbox.com',
+            'https://events.mapbox.com',
+            'https://m.stripe.network',
+          ],
+          childSrc: ["'self'", 'blob:'],
+          imgSrc: ["'self'", 'data:', 'blob:','https:'],
+          formAction: ["'self'"],
+          connectSrc: [ 
+            "'self'",
+            "'unsafe-inline'",
+            'data:',
+            'blob:',
+            'https://*.stripe.com',
+            'https://*.mapbox.com',
+            'https://*.cloudflare.com/',
+            'https://bundle.js:*',
+            'ws://127.0.0.1:*/',
+            ...connectSrcUrls
+          ],
+          upgradeInsecureRequests: [],
+        },
+      },
+    })
+  );
 
 // Development logging
-if(process.env.NODE_ENV === 'development') { // logging only for development
-    app.use(morgan('dev')); // logs the main information about each request (method, url, status, etc) # GET /api/v1/tours 200 2.740 ms - 7423
+if (process.env.NODE_ENV === 'development') {
+  app.use(morgan('dev'));
 }
 
 // Limit requests from same API
-const limiter = rateLimit({ // Limits 100 requests from the same IP in 1 hour
-    max: 100,
-    windowMs: 60 * 60 * 1000,
-    message: "Too many requests from this IP, please try again in 1 hour."
+const limiter = rateLimit({
+  max: 100,
+  windowMs: 60 * 60 * 1000,
+  message: 'Too many requests from this IP, please try again in an hour!'
 });
-app.use('/api', limiter); // apply limiter only to routes starting with this url. In headers will see X-RateLimit-Remaining
+app.use('/api', limiter);
 
 // Body parser, reading data from body into req.body
-app.use(express.json({ limit: '10kb'})); 
+app.use(express.json({ limit: '10kb' }));
+app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+app.use(cookieParser());
 
 // Data sanitization against NoSQL query injection
-app.use(mongoSanitize()); // filters out all $ and dots from request.params
+app.use(mongoSanitize());
 
-// Data sanitization against XSS - cross-site scripting attacks
-app.use(xss()); // protect from malicious HTML code, converts it into HTML entity "<" => "&lt;" 
+// Data sanitization against XSS
+app.use(xss());
 
 // Prevent parameter pollution
-app.use(hpp({
-    whitelist: ['duration', "ratingsAverage", "ratingsQuantity", "maxGroupSize", "difficulty", "price"]
-}));
+app.use(
+  hpp({
+    whitelist: [
+      'duration',
+      'ratingsQuantity',
+      'ratingsAverage',
+      'maxGroupSize',
+      'difficulty',
+      'price'
+    ]
+  })
+);
 
 // Test middleware
-app.use((req, res, next) => { //Next - name of 3rd argument according to Convention. Applies to each request
-    req.requestTime = new Date().toISOString(); //aplies to every request, set time of the request
-    next(); 
+app.use((req, res, next) => {
+  req.requestTime = new Date().toISOString();
+  //console.log(req.cookies);
+  next();
 });
 
-// Serving static files (html, css...) from the folder and not from a route
-app.use(express.static(`${__dirname}/public`))  
-
-
-// mounting the new routers on the routes
-app.use('/api/v1/tours', tourRouter); // After this, in tourRouter.route we change ('/api/v1/tours') to ('/'), and ('/api/v1/tours:id') to ('/:id')
+// 3) ROUTES
+app.use('/', viewRouter);
+app.use('/api/v1/tours', tourRouter);
 app.use('/api/v1/users', userRouter);
 app.use('/api/v1/reviews', reviewRouter);
 
-// Handling unhandled routes - should run after all route handlers
-app.all('*', (req, res, next) => { // "all" - will work for all http methods. "*" - stands for everything, for all urls that were not handled before. 
-    next(new AppError(`Can't fing ${req.originalUrl} on this server`, 404)) // if next has argument, Express will automatically know that there is an error, skips all middlewares in stack and handles the error
-}) 
+app.all('*', (req, res, next) => {
+  next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
+});
 
-
-app.use(globalErrorHandler) 
+app.use(globalErrorHandler);
 
 module.exports = app;

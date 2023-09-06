@@ -498,6 +498,7 @@ body {
   border-radius: 50%;
   height: 3.5rem;
   margin-right: 1.25rem;
+  
 }
 
 .section-pictures {
@@ -529,7 +530,7 @@ body {
   object-fit: cover;
 }
 .picture-box__img--1 {
-  padding-top: 15%;
+  padding-top: 10%;
 }
 .picture-box__img--2 {
   padding-bottom: 15%;
