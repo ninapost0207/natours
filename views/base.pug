@@ -1,20 +1,13 @@
 doctype html 
 html
     head
-        block append head
-            //link(rel='stylesheet' href='https://unpkg.com/leaflet@1.6.0/dist/leaflet.css')
-            //script(src='https://unpkg.com/leaflet@1.6.0/dist/leaflet.js')
-            link(rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.3/leaflet.css" integrity="sha256-kLaT2GOSpHechhsozzB+flnD+zUyjE2LlfWPgU04xyI=" crossorigin="")
-            script(src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.3/leaflet.js" integrity="sha256-WBkoXOwTeyKclOHuWtc+i2uENFpDZ9YPdf5Hf+D7ewM=" crossorigin="")
-            //script(src='https://cdnjs.cloudflare.com/ajax/libs/axios/1.5.0/axios.min.js')
-            script(src='/js/bundled/index.js')
-            
+        block head
             meta(charset='UTF-8')
-            meta(meta, name='viewport', content='width=device-width, initial-scale=1.0')
-            link(rel='stylesheet', href='/css/style.css')
-            link(rel='shortcut icon', type='image/png', href='/img/favicon.png')
-            link(href='https://fonts.googleapis.com/css?family=Lato:300,300i,700', rel='stylesheet')
-            title Natours | #{title} 
+            meta(name='viewport' content='width=device-width, initial-scale=1.0')
+            link(rel='stylesheet' href='/css/style.css')
+            link(rel='shortcut icon' type='image/png' href='/img/favicon.png')
+            link(rel='stylesheet' href='https://fonts.googleapis.com/css?family=Lato:300,300i,700')
+            title Natours | #{title}
  
     body
         // HEADER
@@ -27,4 +20,10 @@ html
         // FOOTER
         include _footer
 
-        
+        //link(rel='stylesheet' href='https://unpkg.com/leaflet@1.6.0/dist/leaflet.css')
+        //script(src='https://unpkg.com/leaflet@1.6.0/dist/leaflet.js')
+        link(rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.3/leaflet.css" integrity="sha256-kLaT2GOSpHechhsozzB+flnD+zUyjE2LlfWPgU04xyI=" crossorigin="")
+        script(src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.3/leaflet.js" integrity="sha256-WBkoXOwTeyKclOHuWtc+i2uENFpDZ9YPdf5Hf+D7ewM=" crossorigin="")
+        //script(src='https://cdnjs.cloudflare.com/ajax/libs/axios/1.5.0/axios.min.js')
+        script(src='https://js.stripe.com/v3/')
+        script(src='/js/bundled/index.js')
