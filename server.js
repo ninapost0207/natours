@@ -33,5 +33,10 @@ process.on('unhandledRejection', err => { // handles errors of connection with d
     process.exit(1); // code 1 - unhandled fatal exceptions occur (code 0 - terminate when no more sync operations are happening).
   })
 });
-
+process.on('SIGTERM', () => {  
+  console.log('SIGTERM received. Shutting down gracefully...');
+  server.close(() => { 
+    console.log('Process terminated') 
+  })
+});
 
